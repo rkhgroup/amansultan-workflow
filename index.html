@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Workflow разработки — полный пакет</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, system-ui, Arial, sans-serif; background:#FAF8F2; color:#1C1B18; padding:20px 30px; }
+h1 { color:#2E1B69; font-size:24px; margin-bottom:4px; }
+.subtitle { color:#5F5E5A; font-style:italic; font-size:13px; margin-bottom:20px; }
+
+.tabs { display:flex; gap:4px; border-bottom:2px solid #D3D1C7; margin-bottom:24px; flex-wrap:wrap; }
+.tab { padding:10px 18px; cursor:pointer; font-size:13px; font-weight:600; color:#5F5E5A; border-radius:8px 8px 0 0; border:2px solid transparent; border-bottom:none; transition:all 0.15s; user-select:none; }
+.tab:hover { background:#F0EEF8; color:#534AB7; }
+.tab.active { background:#534AB7; color:#fff; border-color:#534AB7; }
+.tab.special { background:#FAC775; color:#412402; }
+.tab.special.active { background:#D4A04F; color:#fff; border-color:#D4A04F; }
+
+.view { display:none; }
+.view.active { display:block; animation:fadein 0.2s ease; }
+@keyframes fadein { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:none;} }
+
+.view-header { background:#fff; border-radius:12px; padding:18px 24px; margin-bottom:24px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+.view-header h2 { color:#2E1B69; font-size:20px; margin-bottom:6px; }
+.view-header .meta { color:#5F5E5A; font-size:12px; }
+.view-header .meta b { color:#1C1B18; }
+
+.flow { display:flex; align-items:stretch; gap:0; overflow-x:auto; padding:30px 0 20px; min-height:280px; }
+.step-wrap { display:flex; flex-direction:column; align-items:center; min-width:170px; flex-shrink:0; position:relative; }
+.role-tag { background:#fff; border:1.5px solid #B5B3A8; border-radius:18px; padding:4px 12px; font-size:10.5px; color:#5F5E5A; margin-bottom:10px; white-space:nowrap; font-weight:600; }
+.step-box { width:170px; min-height:60px; border-radius:30px; padding:12px 14px; text-align:center; font-size:12px; font-weight:600; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.1); border:1.5px solid; line-height:1.3; }
+.step-box .duration { font-size:11px; font-weight:700; margin-top:4px; opacity:0.85; }
+.step-note { background:#fff; border:1px solid #D3D1C7; border-radius:6px; padding:8px 10px; font-size:10.5px; color:#5F5E5A; line-height:1.4; margin-top:12px; width:170px; min-height:60px; }
+.step-note b { color:#1C1B18; }
+.arrow-h { display:flex; align-items:center; padding:0 6px; padding-top:42px; }
+.arrow-h::after { content:''; width:30px; height:2px; background:#888; position:relative; }
+.arrow-h::before { content:''; position:absolute; margin-left:24px; margin-top:-3px; width:0; height:0; border-left:7px solid #888; border-top:5px solid transparent; border-bottom:5px solid transparent; }
+
+.branch { display:flex; flex-direction:column; gap:18px; padding:0 6px; padding-top:30px; }
+.branch-line { display:flex; align-items:center; gap:8px; }
+.branch-label { background:#FFE4B5; border:1.5px solid #D4A04F; border-radius:14px; padding:3px 10px; font-size:10.5px; font-weight:700; color:#5F4A12; min-width:80px; text-align:center; }
+.branch-arrow { width:22px; height:2px; background:#888; position:relative; }
+.branch-arrow::after { content:''; position:absolute; right:-1px; top:-4px; width:0; height:0; border-left:7px solid #888; border-top:5px solid transparent; border-bottom:5px solid transparent; }
+
+.c-blue { background:#E6F1FB; border-color:#185FA5; color:#0C447C; }
+.c-yellow { background:#FFE4B5; border-color:#D4A04F; color:#5F4A12; }
+.c-amber { background:#FAEEDA; border-color:#993C1D; color:#71200E; }
+.c-green { background:#E1F5EE; border-color:#1D9E75; color:#0F6E56; }
+.c-red { background:#FADBD8; border-color:#C0392B; color:#922B21; }
+.c-pink { background:#FBEAF0; border-color:#993556; color:#72243E; }
+.c-purple { background:#534AB7; border-color:#2E1B69; color:#fff; }
+.c-orange { background:#FFA64D; border-color:#993C1D; color:#fff; }
+.c-critical { background:#FF6B5B; border-color:#922B21; color:#fff; }
+
+.info-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:24px; }
+.info { background:#fff; border-radius:10px; padding:14px 16px; border-left:4px solid #534AB7; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
+.info .lbl { font-size:10.5px; color:#5F5E5A; text-transform:uppercase; letter-spacing:0.05em; font-weight:700; margin-bottom:4px; }
+.info .val { font-size:13px; color:#1C1B18; line-height:1.4; }
+
+.prio-table { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-top:24px; }
+.prio { padding:16px; border-radius:10px; color:#fff; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.15); }
+.prio.p0 { background:#FF6B5B; }
+.prio.p1 { background:#FFA64D; }
+.prio.p2 { background:#FFD66B; color:#412402; }
+.prio.p3 { background:#A8D982; color:#1A4008; }
+.prio .lbl { font-size:20px; font-weight:800; }
+.prio .name { font-size:12px; font-weight:600; margin-top:4px; opacity:0.95; }
+.prio .when { font-size:11px; margin-top:6px; opacity:0.9; }
+.prio .sla { font-size:13px; font-weight:700; margin-top:10px; padding:6px; background:rgba(0,0,0,0.15); border-radius:5px; }
+.prio .action { font-size:10.5px; margin-top:8px; opacity:0.9; line-height:1.3; }
+
+.checklist { background:#fff; border-radius:10px; padding:18px 22px; margin-top:24px; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+.checklist h3 { color:#2E1B69; font-size:14px; margin-bottom:10px; }
+.checklist ul { list-style:none; padding:0; }
+.checklist li { padding:6px 0; font-size:12.5px; color:#1C1B18; padding-left:24px; position:relative; line-height:1.5; }
+.checklist li::before { content:'✓'; position:absolute; left:0; top:6px; color:#1D9E75; font-weight:700; }
+
+.warning { background:#FFF5E1; border-left:4px solid #D4A04F; padding:12px 16px; border-radius:6px; margin-top:16px; font-size:12px; color:#5F4A12; }
+.warning b { color:#412402; }
+
+.scroll-hint { text-align:center; color:#5F5E5A; font-size:11px; font-style:italic; margin-top:8px; }
+
+/* GLOSSARY */
+.glossary-search { width:100%; padding:14px 18px; font-size:14px; border:2px solid #D3D1C7; border-radius:10px; margin-bottom:20px; font-family:inherit; background:#fff; }
+.glossary-search:focus { outline:none; border-color:#534AB7; }
+.term-card { background:#fff; border-radius:12px; padding:20px 24px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.05); border-left:5px solid #534AB7; }
+.term-card.priority { border-left-color:#C0392B; }
+.term-card.meeting { border-left-color:#1D9E75; }
+.term-card.tech { border-left-color:#185FA5; }
+.term-card.process { border-left-color:#D4A04F; }
+.term-name { color:#2E1B69; font-size:17px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+.term-name .en { color:#5F5E5A; font-size:13px; font-weight:400; font-style:italic; }
+.term-def { color:#1C1B18; font-size:13.5px; line-height:1.6; margin-bottom:10px; }
+.term-analogy { background:#FFF5E1; border-radius:6px; padding:10px 14px; font-size:12.5px; color:#5F4A12; line-height:1.5; margin-bottom:8px; }
+.term-analogy b { color:#412402; }
+.term-example { background:#F0EEF8; border-radius:6px; padding:10px 14px; font-size:12px; color:#2E1B69; line-height:1.5; font-family:'Courier New', monospace; }
+
+/* TEMPLATES */
+.template-card { background:#fff; border-radius:12px; padding:24px 28px; margin-bottom:18px; box-shadow:0 2px 8px rgba(0,0,0,0.06); border-top:5px solid #534AB7; }
+.template-card.tz { border-top-color:#185FA5; }
+.template-card.akt { border-top-color:#1D9E75; }
+.template-card h3 { color:#2E1B69; font-size:20px; margin-bottom:6px; }
+.template-card .desc { color:#5F5E5A; font-size:13px; margin-bottom:16px; line-height:1.5; }
+.template-card .when { background:#FFF5E1; padding:10px 14px; border-radius:6px; font-size:12.5px; color:#5F4A12; margin-bottom:16px; }
+.template-card .when b { color:#412402; }
+.template-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.btn { padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:all 0.15s; }
+.btn-primary { background:#534AB7; color:#fff; }
+.btn-primary:hover { background:#3C3489; transform:translateY(-1px); box-shadow:0 4px 10px rgba(83,74,183,0.3); }
+.btn-secondary { background:#fff; color:#534AB7; border:2px solid #534AB7; }
+.btn-secondary:hover { background:#EEEDFE; }
+.template-sections { margin-top:20px; }
+.template-sections h4 { color:#1C1B18; font-size:14px; margin:14px 0 8px; }
+.template-sections ul { list-style:none; padding-left:0; }
+.template-sections li { padding:4px 0 4px 22px; font-size:12.5px; color:#5F5E5A; position:relative; line-height:1.5; }
+.template-sections li::before { content:'📄'; position:absolute; left:0; top:4px; font-size:11px; }
+</style>
+</head>
+<body>
+
+<h1>Workflow отдела разработки + Глоссарий + Шаблоны</h1>
+
+<div class="tabs">
+<div class="tab active" data-tab="feature">🆕 Новый функционал</div>
+<div class="tab" data-tab="bug">🐛 Баг-фикс</div>
+<div class="tab" data-tab="small">⚡ Мелкая правка</div>
+<div class="tab" data-tab="hotfix">🔥 P0 Hotfix</div>
+<div class="tab" data-tab="acceptance">💰 Приёмка работы</div>
+<div class="tab" data-tab="onboarding">👋 Онбординг</div>
+<div class="tab" data-tab="codereview">🚀 Review + Deploy</div>
+<div class="tab special" data-tab="glossary">📚 Глоссарий</div>
+<div class="tab special" data-tab="templates">📄 Шаблоны</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 1: Новый функционал                                              -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view active" id="view-feature">
+<div class="view-header">
+<h2>🆕 Процесс: Новый функционал (от идеи до релиза)</h2>
+<div class="meta">SLA: <b>2–6 недель</b> · 12 этапов · ответственный: <b>Tech Lead</b> · трекер: <b>GitHub Projects</b></div>
+</div>
+
+<div class="scroll-hint">← прокрути горизонтально →</div>
+<div class="flow">
+<div class="step-wrap"><div class="role-tag">Заказчик</div><div class="step-box c-yellow">Заявка<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>Что:</b> заполнить форму в Notion: что, зачем, для кого, какие результаты</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Триаж<div class="duration">⏱ до 2 дней</div></div><div class="step-note"><b>Решение:</b> отклонить / уточнить / в беклог / в спринт</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Заказчик + TL</div><div class="step-box c-blue">Написание ТЗ<div class="duration">⏱ 2–3 дня</div></div><div class="step-note"><b>Документ:</b> цели, scope, user stories, mockups, Definition of Done</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Команда</div><div class="step-box c-blue">Оценка часов<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>Кто:</b> разработчики оценивают на стендапе. Часы + риски</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-blue">В спринт<div class="duration">⏱ Пн 10:00</div></div><div class="step-note"><b>Sprint planning:</b> назначение исполнителя, декомпозиция задачи</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Дизайнер</div><div class="step-box c-pink">Дизайн / макет<div class="duration">⏱ 3–5 дней</div></div><div class="step-note"><b>Если нужно:</b> макеты в Figma, согласование</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Разработка<div class="duration">⏱ 5–15 дней</div></div><div class="step-note"><b>Где:</b> feature/XXX ветка. Код + базовые тесты</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Code review<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>PR в GitHub:</b> TL проверяет код, архитектуру, безопасность</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">QA</div><div class="step-box c-amber">Тестирование<div class="duration">⏱ 2–3 дня</div></div><div class="step-note"><b>На staging:</b> функциональные тесты + regression</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Заказчик</div><div class="step-box c-green">Приёмка<div class="duration">⏱ 1–2 дня</div></div><div class="step-note"><b>На staging:</b> заказчик тестирует и подтверждает</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">DevOps + TL</div><div class="step-box c-purple">Deploy на Prod<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>Окно:</b> вт–чт. Deploy, миграции, мониторинг 24ч</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Команда</div><div class="step-box c-green">Закрытие + ретро<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>Что:</b> задача в Done, аналитика, выводы</div></div>
+</div>
+
+<div class="warning">⚠️ <b>Возврат на доработку:</b> если на приёмке не принято — возврат к шагу 7 с описанием замечаний.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 2: БАГ-ФИКС                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-bug">
+<div class="view-header">
+<h2>🐛 Процесс: Баг-фикс (P0 / P1 / P2 / P3)</h2>
+<div class="meta">SLA: <b>зависит от приоритета</b> · триаж: <b>4 часа max</b> · ответственный: <b>Tech Lead</b></div>
+</div>
+
+<div class="scroll-hint">← прокрути горизонтально →</div>
+<div class="flow">
+<div class="step-wrap"><div class="role-tag">Кто угодно</div><div class="step-box c-red">Баг-репорт<div class="duration">⏱ 15 мин</div></div><div class="step-note"><b>Шаблон в Notion:</b> шаги, ожидаемое, фактическое, скриншот, устройство</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Триаж<div class="duration">⏱ 4 часа max</div></div><div class="step-note"><b>Решение:</b> воспроизводится? Приоритет P0/P1/P2/P3?</div></div>
+<div class="branch">
+<div class="branch-line"><div class="branch-label">P0</div><div class="branch-arrow"></div></div>
+<div class="branch-line"><div class="branch-label">P1</div><div class="branch-arrow"></div></div>
+<div class="branch-line"><div class="branch-label">P2</div><div class="branch-arrow"></div></div>
+<div class="branch-line"><div class="branch-label">P3</div><div class="branch-arrow"></div></div>
+</div>
+<div style="display:flex; flex-direction:column; gap:18px; padding-top:30px;">
+<div class="step-wrap" style="flex-direction:row; align-items:center; gap:8px;"><div class="step-box c-critical" style="width:170px;">🔥 Hotfix<div class="duration">⏱ &lt; 4 часа</div></div><div class="branch-arrow"></div><div class="step-box c-purple" style="width:160px;">🚀 Сразу в Prod</div></div>
+<div class="step-wrap" style="flex-direction:row; align-items:center; gap:8px;"><div class="step-box c-orange" style="width:170px;">В текущий спринт<div class="duration">⏱ &lt; 24 часа</div></div><div class="branch-arrow"></div><div class="step-box c-purple" style="width:160px;">Стандартный flow</div></div>
+<div class="step-wrap" style="flex-direction:row; align-items:center; gap:8px;"><div class="step-box c-yellow" style="width:170px; color:#412402;">Следующий спринт<div class="duration">⏱ след. пн</div></div><div class="branch-arrow"></div><div class="step-box c-purple" style="width:160px;">Планирование в пн</div></div>
+<div class="step-wrap" style="flex-direction:row; align-items:center; gap:8px;"><div class="step-box c-green" style="width:170px;">В беклог<div class="duration">⏱ когда время</div></div><div class="branch-arrow"></div><div class="step-box c-purple" style="width:160px;">Tech debt</div></div>
+</div>
+</div>
+
+<div class="prio-table">
+<div class="prio p0"><div class="lbl">🔥 P0</div><div class="name">КРИТИЧНО</div><div class="when">прод лежит, теряем деньги/данные</div><div class="sla">фикс &lt; 4 часов</div><div class="action">hotfix → прод → post-mortem обязателен</div></div>
+<div class="prio p1"><div class="lbl">⚠️ P1</div><div class="name">ВЫСОКИЙ</div><div class="when">важная функция сломана, есть workaround</div><div class="sla">фикс &lt; 24 часов</div><div class="action">в текущий спринт, ускоренный review</div></div>
+<div class="prio p2"><div class="lbl">📌 P2</div><div class="name">СРЕДНИЙ</div><div class="when">мешает, но работает</div><div class="sla">следующий спринт</div><div class="action">стандартное планирование</div></div>
+<div class="prio p3"><div class="lbl">💧 P3</div><div class="name">НИЗКИЙ</div><div class="when">косметика, опечатки</div><div class="sla">в беклог</div><div class="action">когда будет время</div></div>
+</div>
+
+<div class="warning">⚠️ <b>Post-mortem обязателен для P0:</b> в течение 48 часов после фикса разбор причины.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 3: МЕЛКАЯ ПРАВКА                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-small">
+<div class="view-header">
+<h2>⚡ Процесс: Мелкая правка (&lt; 2 часов)</h2>
+<div class="meta">SLA: <b>1 рабочий день</b> · 6 этапов · упрощённый flow для микро-задач</div>
+</div>
+
+<div class="scroll-hint">← прокрути горизонтально →</div>
+<div class="flow">
+<div class="step-wrap"><div class="role-tag">Заказчик</div><div class="step-box c-yellow">Запрос в чат<div class="duration">⏱ 5 мин</div></div><div class="step-note"><b>В Slack/Telegram</b> с тегом #смена-правка</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Проверка &lt;2ч<div class="duration">⏱ 30 мин</div></div><div class="step-note"><b>Решение:</b> правда ли &lt;2ч? Если нет — стандартный flow</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-blue">Задача в трекер<div class="duration">⏱ 5 мин</div></div><div class="step-note"><b>Обязательно:</b> label quick-fix в GitHub Projects</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Разработка<div class="duration">⏱ &lt; 2 часа</div></div><div class="step-note"><b>feature/quick-XXX</b> ветка. Без полного ТЗ</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Быстрое review<div class="duration">⏱ 30 мин</div></div><div class="step-note"><b>Облегчённое:</b> только критичные моменты</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">DevOps</div><div class="step-box c-purple">Deploy на Prod<div class="duration">⏱ 30 мин</div></div><div class="step-note"><b>В тот же день:</b> с smoke-тестом после</div></div>
+</div>
+
+<div class="checklist">
+<h3>✅ Что считается мелкой правкой</h3>
+<ul>
+<li>Изменение текста или копии на странице</li>
+<li>Замена цвета, шрифта, иконки</li>
+<li>Добавление поля в форму (без новой логики)</li>
+<li>Правка ссылки, мелкое исправление layout</li>
+<li>Изменение констант (лимиты, тексты email)</li>
+</ul>
+</div>
+
+<div class="warning">⚠️ <b>НЕ мелкая правка:</b> изменения БД, новые endpoints, бизнес-логика, новые экраны, интеграции. Это стандартный flow.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 4: HOTFIX P0                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-hotfix">
+<div class="view-header">
+<h2>🔥 Процесс: Срочный P0 Hotfix (прод лежит)</h2>
+<div class="meta">SLA: <b>&lt; 4 часов до фикса</b> · максимально ускоренный · бросаем всё</div>
+</div>
+
+<div class="scroll-hint">← прокрути горизонтально →</div>
+<div class="flow">
+<div class="step-wrap"><div class="role-tag">Кто угодно</div><div class="step-box c-critical">🚨 Сигнал<div class="duration">⏱ T+0</div></div><div class="step-note"><b>В #incidents:</b> что не работает, скриншот, ссылка</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-critical">Подтверждение P0<div class="duration">⏱ T+15 мин</div></div><div class="step-note"><b>Проверка:</b> воспроизводится? Сколько юзеров? Деньги?</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-orange">War room<div class="duration">⏱ T+30 мин</div></div><div class="step-note"><b>Сбор:</b> экстренный звонок. Назначаем "капитана" фикса</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Диагностика<div class="duration">⏱ T+1ч</div></div><div class="step-note"><b>Что:</b> логи, метрики, репликация. Гипотеза + план</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Hotfix branch<div class="duration">⏱ T+2ч</div></div><div class="step-note"><b>От main:</b> минимальный фикс, без рефакторинга</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Ускоренное review<div class="duration">⏱ T+2.5ч</div></div><div class="step-note"><b>Только TL:</b> фокус — не сломает ли что-то ещё</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">QA + TL</div><div class="step-box c-amber">Smoke тест<div class="duration">⏱ T+3ч</div></div><div class="step-note"><b>На staging:</b> фикс работает + критический regression</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">DevOps</div><div class="step-box c-purple">Deploy на Prod<div class="duration">⏱ T+3.5ч</div></div><div class="step-note"><b>С monitoring:</b> deploy + проверка + мониторинг 1 час</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-green">Сообщение всем<div class="duration">⏱ T+4ч</div></div><div class="step-note"><b>В общий чат:</b> "проблема устранена, причина, что сделали"</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Команда</div><div class="step-box c-amber">Post-mortem<div class="duration">⏱ T+48ч</div></div><div class="step-note"><b>Документ:</b> что, почему, как нашли, как предотвратить</div></div>
+</div>
+
+<div class="info-row">
+<div class="info" style="border-left-color:#C0392B;"><div class="lbl">Что P0</div><div class="val">Прод лежит · теряем деньги · теряем данные · security breach · &gt;30% юзеров</div></div>
+<div class="info" style="border-left-color:#993C1D;"><div class="lbl">Что НЕ P0</div><div class="val">«Срочно для меня» · сломан мелкий функционал · косметика</div></div>
+<div class="info" style="border-left-color:#1D9E75;"><div class="lbl">После фикса</div><div class="val">Post-mortem в 48ч + добавить тест + monitoring/alerts</div></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 5: ПРИЁМКА                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-acceptance">
+<div class="view-header">
+<h2>💰 Процесс: Приёмка работы разработчиков (для оплаты)</h2>
+<div class="meta">8 этапов · ответственный: <b>Tech Lead + PM</b> · ежемесячно</div>
+</div>
+
+<div class="scroll-hint">← прокрути горизонтально →</div>
+<div class="flow">
+<div class="step-wrap"><div class="role-tag">PM / Tech Lead</div><div class="step-box c-yellow">Чек-лист<div class="duration">⏱ заранее</div></div><div class="step-note"><b>До старта работы:</b> критерии приёмки утверждены</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Отчёт за период<div class="duration">⏱ конец месяца</div></div><div class="step-note"><b>Что:</b> список задач со ссылками на PR</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Сверка задач<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>Проверка:</b> что из плана выполнено? Отклонения?</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Проверка качества<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>Критерии:</b> review · тесты · прод · нет багов</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-blue">Оценка<div class="duration">⏱ 0.5 дня</div></div><div class="step-note"><b>Шкала:</b> ✅ принято / ⚠️ с замечаниями / ❌ не принято</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">PM</div><div class="step-box c-blue">Расчёт оплаты<div class="duration">⏱ 0.5 дня</div></div><div class="step-note"><b>Формула:</b> базовая ЗП × процент приёмки</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">PM + Owner</div><div class="step-box c-green">Согласование<div class="duration">⏱ 1 день</div></div><div class="step-note"><b>Подписи:</b> TL → PM → Owner</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Бухгалтерия</div><div class="step-box c-purple">Выплата<div class="duration">⏱ 1–3 дня</div></div><div class="step-note"><b>Перевод</b> + закрывающий документ</div></div>
+</div>
+
+<div class="checklist">
+<h3>✅ Критерии приёмки (Definition of Done)</h3>
+<ul>
+<li>Задача из плана выполнена полностью или согласована частичная сдача</li>
+<li>Pull Request смержен в main/dev</li>
+<li>Code review пройден без блокирующих замечаний</li>
+<li>Базовые тесты написаны и проходят</li>
+<li>Функционал работает на staging или в проде</li>
+<li>Нет открытых P0/P1 багов в выполненной области</li>
+<li>Документация обновлена (если нужно)</li>
+<li>Демо проведено или скриншот/видео есть</li>
+</ul>
+</div>
+
+<div class="warning">⚠️ <b>Если приёмка с замечаниями:</b> разработчик получает список доработок и дедлайн. Оплата после устранения.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 6: ОНБОРДИНГ                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-onboarding">
+<div class="view-header">
+<h2>👋 Процесс: Онбординг нового разработчика</h2>
+<div class="meta">SLA: <b>5 дней до полноценной работы</b> · 10 этапов · ответственный: <b>Tech Lead</b></div>
+</div>
+
+<div class="scroll-hint">← прокрути горизонтально →</div>
+<div class="flow">
+<div class="step-wrap"><div class="role-tag">PM / HR</div><div class="step-box c-yellow">Оффер принят<div class="duration">⏱ День -3</div></div><div class="step-note"><b>За 3 дня:</b> подписан контракт, известны технологии</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">PM</div><div class="step-box c-yellow">Доступы<div class="duration">⏱ День -1</div></div><div class="step-note"><b>До старта:</b> email, Slack, GitHub, Notion, Figma</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-blue">Welcome звонок<div class="duration">⏱ День 1</div></div><div class="step-note"><b>1 час:</b> знакомство, продукты, команда, ритуалы</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-blue">Архитектура<div class="duration">⏱ День 1</div></div><div class="step-note"><b>Презентация:</b> стек, БД, модули, Miro доски</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Setup окружения<div class="duration">⏱ День 2</div></div><div class="step-note"><b>По README:</b> склонировать, поднять локально, тесты</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Тестовая задача<div class="duration">⏱ День 3</div></div><div class="step-note"><b>Маленькая:</b> мелкий функционал, PR, code review</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Review + фидбек<div class="duration">⏱ День 3-4</div></div><div class="step-note"><b>Детально:</b> стандарты, code style, паттерны</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Первая задача<div class="duration">⏱ День 4-5</div></div><div class="step-note"><b>Из спринта:</b> средней сложности с buddy на подхвате</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-green">1:1 встреча<div class="duration">⏱ День 5</div></div><div class="step-note"><b>Итоги недели:</b> что понятно, блокеры, обратная связь</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-purple">Интеграция<div class="duration">⏱ День 6+</div></div><div class="step-note"><b>Дальше:</b> как обычный член команды</div></div>
+</div>
+
+<div class="checklist">
+<h3>✅ Что должно быть готово к старту</h3>
+<ul>
+<li>Доступ к GitHub репозиториям</li>
+<li>Доступ к Notion (ТЗ, регламенты)</li>
+<li>Доступ к Slack/Telegram каналам</li>
+<li>Email в корпоративном домене</li>
+<li>README с инструкцией по запуску локально</li>
+<li>Документ "Welcome to team"</li>
+<li>Buddy-разработчик назначен</li>
+<li>Тестовая задача подготовлена заранее</li>
+</ul>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 7: CODE REVIEW + DEPLOY                                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-codereview">
+<div class="view-header">
+<h2>🚀 Процесс: Code Review + Deploy на Production</h2>
+<div class="meta">SLA: <b>1–2 дня от PR до релиза</b> · 10 этапов</div>
+</div>
+
+<div class="scroll-hint">← прокрути горизонтально →</div>
+<div class="flow">
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Готов код<div class="duration">⏱ T+0</div></div><div class="step-note"><b>Самопроверка:</b> работает локально, тесты, нет debug</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Push + PR<div class="duration">⏱ T+15 мин</div></div><div class="step-note"><b>PR в GitHub:</b> описание, скриншоты, ссылка на задачу</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">CI/CD</div><div class="step-box c-blue">Автотесты<div class="duration">⏱ 10 мин</div></div><div class="step-note"><b>GitHub Actions:</b> линтер, тесты, build</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Code review<div class="duration">⏱ 4–24 часа</div></div><div class="step-note"><b>Что:</b> архитектура, безопасность, производительность</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Разработчик</div><div class="step-box c-pink">Правки<div class="duration">⏱ 0–2 дня</div></div><div class="step-note"><b>Если замечания:</b> правим, пушим в ту же ветку</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-amber">Approve + Merge<div class="duration">⏱ 10 мин</div></div><div class="step-note"><b>Squash & merge:</b> чистая история, ссылка на задачу</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">CI/CD</div><div class="step-box c-blue">Auto Staging<div class="duration">⏱ 5 мин</div></div><div class="step-note"><b>Авто</b> после merge. Уведомление в Slack</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">QA</div><div class="step-box c-amber">Тесты staging<div class="duration">⏱ 2–4 часа</div></div><div class="step-note"><b>Функциональные:</b> работает ли? Не сломано ли?</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">TL + DevOps</div><div class="step-box c-purple">Deploy на Prod<div class="duration">⏱ 30 мин</div></div><div class="step-note"><b>Окно:</b> вт-чт 10-16. Миграции, мониторинг</div></div>
+<div class="arrow-h"></div>
+<div class="step-wrap"><div class="role-tag">Tech Lead</div><div class="step-box c-green">Post-deploy<div class="duration">⏱ 1 час</div></div><div class="step-note"><b>Smoke + мониторинг:</b> ошибки, latency 24ч</div></div>
+</div>
+
+<div class="info-row">
+<div class="info" style="border-left-color:#185FA5;"><div class="lbl">Чек-лист PR</div><div class="val">Описание · ссылка на задачу · скриншоты · тесты добавлены</div></div>
+<div class="info" style="border-left-color:#993C1D;"><div class="lbl">Что блокирует merge</div><div class="val">Падающие тесты · открытые комментарии · нет approve TL</div></div>
+<div class="info" style="border-left-color:#1D9E75;"><div class="lbl">Окно деплоя</div><div class="val">Вт–Чт 10:00–16:00. НЕ в пт после 14:00, не в выходные</div></div>
+<div class="info" style="border-left-color:#C0392B;"><div class="lbl">Rollback план</div><div class="val">Откат к предыдущему deploy за 5 минут</div></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 8: ГЛОССАРИЙ                                               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-glossary">
+<div class="view-header">
+<h2>📚 Глоссарий терминов</h2>
+<div class="meta">Простым языком · с аналогиями · для всех кто работает с отделом разработки</div>
+</div>
+
+<input type="text" class="glossary-search" placeholder="🔍 Поиск термина..." id="glossary-search">
+
+<div id="glossary-list">
+
+<div class="term-card process" data-term="триаж triage сортировка"><div class="term-name">🎯 Триаж <span class="en">(Triage)</span></div>
+<div class="term-def">Первичная сортировка входящих задач, чтобы решить что делать дальше: отклонить, в беклог, в спринт или срочно в работу. Tech Lead делает за 48 часов после получения задачи.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> приёмное отделение скорой помощи. Медсестра за 2 минуты определяет: этого в реанимацию срочно, этого к врачу через час, этому можно завтра прийти.</div>-->
+<div class="term-example">Пример: пришла заявка → TL смотрит → решает «P2, в беклог» → задача ждёт груминга в среду</div>
+</div>
+
+<div class="term-card process" data-term="беклог backlog очередь"><div class="term-name">📋 Беклог <span class="en">(Backlog)</span></div>
+<div class="term-def">Список ВСЕХ задач которые надо сделать когда-нибудь, отсортированный по важности. Сверху — что важнее, снизу — что подождёт. Из беклога берём задачи в спринт.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> магнитная доска с стикерами на кухне. «Купить молоко», «починить кран», «поменять лампочку» — это беклог домашних дел.</div>-->
+<div class="term-example">Беклог: 1. Кнопка «Войти» 2. Фильтр предметов 3. Цвет фона 4. Тёмная тема</div>
+</div>
+
+<div class="term-card process" data-term="спринт sprint неделя"><div class="term-name">🏃 Спринт <span class="en">(Sprint)</span></div>
+<div class="term-def">Период времени (1–2 недели) в течение которого команда обещает сделать конкретный набор задач из беклога. У нас — 1 неделя. Пн планируем, Пт демо.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> 4 недели в спортзале с целью «скинуть 3 кг». Есть начало, конец, и конкретный план. Не «буду ходить когда-нибудь».</div>-->
+<div class="term-example">Спринт #3 (15-21.06) · Цель: учитель может создать класс и пригласить учеников</div>
+</div>
+
+<div class="term-card process" data-term="груминг grooming разбор беклога"><div class="term-name">📋 Груминг <span class="en">(Grooming / Backlog Refinement)</span></div>
+<div class="term-def">Встреча в среду (1 час), где Tech Lead с заказчиками разбирает беклог: новые задачи, приоритеты, удаление дублей.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> раз в неделю разбираешь почту. Важное — отвечать, мусор — удалить, непонятное — уточнить. То же самое с беклогом задач.</div>-->
+<div class="term-example">Среда 16:00: смотрим 5 новых заявок → обсуждаем → 2 в спринт, 2 в беклог, 1 отклоняем</div>
+</div>
+
+<div class="term-card priority" data-term="p0 p1 p2 p3 приоритет"><div class="term-name">🔥 P0 / P1 / P2 / P3 <span class="en">(Priority levels)</span></div>
+<div class="term-def">Система приоритетов задач. P0 — критично сейчас. P1 — важно сегодня. P2 — в этом месяце. P3 — когда время будет.</div>
+<!--<div class="term-analogy"><b>Аналогия с пожарными:</b> P0 — горящий дом. P1 — кошка на дереве с ребёнком. P2 — покосившийся забор. P3 — облезшая краска.</div>-->
+<div class="term-example">P0: сайт упал у всех → 4 часа. P1: оплата не работает → 24 часа. P2: дашборд тормозит → след. спринт. P3: кнопка кривая → беклог</div>
+</div>
+
+<div class="term-card process" data-term="тз spec техническое задание"><div class="term-name">📝 ТЗ <span class="en">(Spec / Technical Specification)</span></div>
+<div class="term-def">Документ описывающий: что нужно сделать, зачем, для кого, какой результат ожидаем. Без ТЗ задача в работу не идёт.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> чертёж дома перед стройкой. Без чертежа строители не знают где двери, окна, сколько этажей.</div>-->
+<div class="term-example">ТЗ содержит: цель, scope, user stories, макеты Figma, Definition of Done, оценку часов</div>
+</div>
+
+<div class="term-card process" data-term="dod definition of done готовность"><div class="term-name">✅ Definition of Done <span class="en">(DoD)</span></div>
+<div class="term-def">Чёткие критерии «когда задача считается завершённой». Защищает от ситуации «ну вроде сделал, но...».</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> в ресторане «блюдо готово» = пожарено + посолено + на тарелке + украшено + соус есть. Не просто «помешал в кастрюле».</div>-->
+<div class="term-example">DoD: код написан + ревью пройдено + тесты есть + работает на проде + заказчик принял</div>
+</div>
+
+<div class="term-card tech" data-term="staging production окружение"><div class="term-name">🌐 Staging / Production <span class="en">(Стейджинг / Прод)</span></div>
+<div class="term-def">Staging — копия боевого сервера для тестирования. Production — боевой сервер где работают реальные пользователи.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> staging — генеральная репетиция в театре с декорациями но без зрителей. Production — настоящий спектакль.</div>-->
+<div class="term-example">Сначала фичу выкатили на staging, заказчик потестил, принял → потом на production к реальным юзерам</div>
+</div>
+
+<div class="term-card tech" data-term="pr pull request merge"><div class="term-name">🔀 Pull Request <span class="en">(PR / Merge Request)</span></div>
+<div class="term-def">Запрос разработчика на добавление его кода в общую кодовую базу. Сначала проходит code review, потом merge.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> писатель отправляет главу книги редактору. Редактор читает, комментирует, потом одобряет добавление в книгу.</div>-->
+<div class="term-example">Разработчик сделал PR #42 → TL проверил → 2 замечания → исправил → approve → merge в main</div>
+</div>
+
+<div class="term-card tech" data-term="branch ветка feature"><div class="term-name">🌿 Branch <span class="en">(Ветка / feature/XXX)</span></div>
+<div class="term-def">Отдельная «веточка» кода для одной задачи. Разработчик не пишет код прямо в main, а делает свою ветку.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> черновик статьи. Пишешь сначала в черновик, правишь, и только когда готово — переносишь в основной документ.</div>-->
+<div class="term-example">feature/student-homework-flow — ветка для разработки сдачи ДЗ. После merge она удаляется.</div>
+</div>
+
+<div class="term-card tech" data-term="code review ревью кода"><div class="term-name">👀 Code Review <span class="en">(Ревью кода)</span></div>
+<div class="term-def">Проверка кода другим разработчиком (обычно Tech Lead) перед попаданием в основную базу. Ищем баги, проблемы безопасности, нарушения стандартов.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> второй пилот проверяет действия первого перед взлётом. Один может пропустить, второй заметит.</div>-->
+<div class="term-example">PR создан → TL читает → пишет 5 комментариев → разработчик правит → re-review → approve</div>
+</div>
+
+<div class="term-card priority" data-term="hotfix экстренный фикс"><div class="term-name">🔥 Hotfix <span class="en">(Экстренный фикс)</span></div>
+<div class="term-def">Экстренный фикс прямо в production, минуя обычный flow. Только для P0. Ветка от main, не от dev.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> срочный ремонт прорвавшейся трубы. Не ждёшь планового ТО, не делаешь ремонт по графику — фиксишь СЕЙЧАС.</div>-->
+<div class="term-example">Прод упал в 14:00 → hotfix branch в 14:15 → fix в 15:30 → deploy в 16:00 → post-mortem завтра</div>
+</div>
+
+<div class="term-card tech" data-term="deploy release деплой"><div class="term-name">🚀 Deploy / Release <span class="en">(Деплой / Релиз)</span></div>
+<div class="term-def">Процесс выкатки кода на staging или production. После deploy пользователи видят изменения.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> премьера фильма в кинотеатре. Сняли → монтаж → тестовые показы → премьера для всех.</div>-->
+<div class="term-example">Deploy в окно вт-чт 10:00-16:00. Никаких релизов в пятницу после 14:00.</div>
+</div>
+
+<div class="term-card priority" data-term="rollback откат"><div class="term-name">↩️ Rollback <span class="en">(Откат)</span></div>
+<div class="term-def">Возврат к предыдущей версии если новый deploy сломал что-то. Делается за 5 минут.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> Ctrl+Z в Word. Сделал что-то, не понравилось — откатил назад моментально.</div>-->
+<div class="term-example">Задеплоили в 15:00 → в 15:10 пошли ошибки → rollback в 15:15 → разбираемся почему сломалось</div>
+</div>
+
+<div class="term-card tech" data-term="ci cd continuous integration deployment"><div class="term-name">🔄 CI/CD <span class="en">(Continuous Integration / Continuous Deployment)</span></div>
+<div class="term-def">CI — автоматическая проверка кода (тесты, линтер) при каждом PR. CD — автоматический деплой после merge.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> конвейер на заводе. Каждая деталь автоматически проходит контроль качества, потом автоматически идёт на сборку.</div>-->
+<div class="term-example">Push в ветку → GitHub Actions запускает тесты → merge → auto-deploy на staging</div>
+</div>
+
+<div class="term-card priority" data-term="qa quality assurance тестирование"><div class="term-name">🧪 QA <span class="en">(Quality Assurance)</span></div>
+<div class="term-def">Контроль качества — тестирование что всё работает как задумано до того как попадёт к юзерам.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> ОТК на заводе. Проверяют каждое изделие перед отправкой клиенту, чтобы не было брака.</div>-->
+<div class="term-example">Разработчик закончил → QA берёт на staging → проходит тест-кейсы → находит 3 бага → возврат на правки</div>
+</div>
+
+<div class="term-card priority" data-term="bug issue баг"><div class="term-name">🐛 Bug / Issue <span class="en">(Баг / Задача)</span></div>
+<div class="term-def">Bug — что-то сломалось, работает не как должно. Issue — общее название для любой задачи в трекере.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> bug — это таракан на кухне (что-то не так). Issue — любая запись в списке дел.</div>-->
+<div class="term-example">Bug #142: кнопка «Сохранить» не работает в Safari. Issue #143: добавить новую секцию на дашборд.</div>
+</div>
+
+<div class="term-card tech" data-term="smoke test проверка"><div class="term-name">💨 Smoke test <span class="en">(Дымовой тест)</span></div>
+<div class="term-def">Базовая быстрая проверка после деплоя — не упало ли что-то фундаментальное (логин, главная, основные функции).</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> завёл машину, фары горят, печка работает, бак не пустой. Не полная диагностика, но минимум что доедешь.</div>-->
+<div class="term-example">После деплоя: открыть сайт, залогиниться, открыть урок, сдать ДЗ. Если работает — можно идти</div>
+</div>
+
+<div class="term-card priority" data-term="post-mortem разбор инцидента"><div class="term-name">🩺 Post-mortem <span class="en">(Разбор инцидента)</span></div>
+<div class="term-def">Документ-разбор после серьёзного инцидента (P0): что случилось, почему, как нашли, что починили, как избежать. Без обвинений.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> разбор полётов в авиации после инцидента. Не «кто виноват», а «что в системе пропустило это».</div>-->
+<div class="term-example">Прод лежал 30 минут → post-mortem: причина в миграции БД → решение: добавить тест на это в CI</div>
+</div>
+
+<div class="term-card meeting" data-term="standup дейли стендап"><div class="term-name">☕ Daily Standup <span class="en">(Дейли / Стендап)</span></div>
+<div class="term-def">15-минутная утренняя встреча команды. Каждый говорит: что сделал вчера / что делает сегодня / есть ли блокеры.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> утренняя планёрка у врачей. Быстро прошлись по статусу пациентов, дальше работать.</div>-->
+<div class="term-example">10:00 Zoom: каждый по 2 минуты. Если кто-то завис на проблеме — отдельный созвон после.</div>
+</div>
+
+<div class="term-card meeting" data-term="sprint planning планирование"><div class="term-name">🎯 Sprint Planning <span class="en">(Планирование спринта)</span></div>
+<div class="term-def">Встреча в понедельник где команда выбирает задачи из беклога на новую неделю и оценивает их.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> воскресный вечер: планируешь рабочую неделю. Что важно, что успеешь, что подождёт.</div>-->
+<div class="term-example">Пн 10:00: смотрим топ-10 беклога → берём 6 задач → распределяем → оцениваем часы</div>
+</div>
+
+<div class="term-card meeting" data-term="retro ретро ретроспектива"><div class="term-name">🎉 Retro <span class="en">(Ретроспектива)</span></div>
+<div class="term-def">Встреча в конце спринта (пт) где обсуждаем: что пошло хорошо, что плохо, что улучшить в процессе.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> разбор матча после игры. Не для упрёков, а чтобы в следующей игре сыграть лучше.</div>-->
+<div class="term-example">Пт 17:00: 3 хорошо (быстро задеплоили, помогли друг другу), 2 плохо (поздно созвонились, не успели тесты)</div>
+</div>
+
+<div class="term-card priority" data-term="blocker блокер"><div class="term-name">🛑 Blocker <span class="en">(Блокер)</span></div>
+<div class="term-def">Что-то что мешает разработчику работать. На дейли каждый говорит о блокерах, чтобы Tech Lead их разруливал.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> пробка на дороге. Не можешь ехать пока её не уберут. Звонишь GPS чтобы построил объезд.</div>-->
+<div class="term-example">Блокер: «жду доступ к staging серверу» → TL пишет DevOps → доступ за час → блокер снят</div>
+</div>
+
+<div class="term-card tech" data-term="tech debt технический долг"><div class="term-name">🛠️ Tech Debt <span class="en">(Технический долг)</span></div>
+<div class="term-def">Накопленные «костыли» в коде которые надо переписать когда будет время. Делаешь быстро сейчас — платишь временем потом.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> натянул скотч на трубу — работает, но через месяц лопнет и затопит соседей.</div>-->
+<div class="term-example">Старый Express бэкенд который надо переписать на Postgres — это tech debt на 3 года</div>
+</div>
+
+<div class="term-card tech" data-term="multi-tenancy мульти-тенант"><div class="term-name">📐 Multi-tenancy <span class="en">(Мульти-тенантность)</span></div>
+<div class="term-def">Архитектура где одна система обслуживает много изолированных клиентов (школ). Каждая школа видит только свои данные.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> многоквартирный дом. Все живут в одном здании, но у каждого своя квартира с замком.</div>-->
+<div class="term-example">Школа A не видит данных школы B. Реализуется через RLS политики Postgres</div>
+</div>
+
+<div class="term-card tech" data-term="rbac роли права"><div class="term-name">🔐 RBAC <span class="en">(Role-Based Access Control)</span></div>
+<div class="term-def">Система прав по ролям: учитель видит одно, ученик — другое, админ — всё. У каждой роли своя матрица разрешений.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> карты доступа в офисе. У бухгалтера доступ к финансам, у HR — к личным делам, у уборщика — везде но без сейфа.</div>-->
+<div class="term-example">Учитель: создавать уроки. Ученик: смотреть и сдавать ДЗ. Админ: всё + управление школой</div>
+</div>
+
+<div class="term-card priority" data-term="sla service level agreement"><div class="term-name">📈 SLA <span class="en">(Service Level Agreement)</span></div>
+<div class="term-def">Соглашение о сроках. Например «P0 баги фиксим за 4 часа» — это SLA. Если нарушаем — претензии оправданы.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> доставка пиццы за 30 минут или бесплатно. Это SLA пиццерии.</div>-->
+<div class="term-example">SLA: P0 < 4ч, P1 < 24ч, Новый функционал 2-6 нед, code review < 24ч</div>
+</div>
+
+<div class="term-card process" data-term="mvp минимальный продукт"><div class="term-name">🏗️ MVP <span class="en">(Minimum Viable Product)</span></div>
+<div class="term-def">Минимально жизнеспособный продукт — самая базовая версия с которой уже можно запускаться и получать обратную связь.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> сначала самокат, потом велосипед, потом машина. А не сразу Tesla за год без обратной связи.</div>-->
+<div class="term-example">MVP Амансултан: школа + учитель + урок + ДЗ. Без AI, без gamification, без аналитики глубокой</div>
+</div>
+
+<div class="term-card priority" data-term="war room экстренный созвон"><div class="term-name">📞 War room <span class="en">(Военная комната)</span></div>
+<div class="term-def">Экстренный созвон команды когда P0 случился. Все бросают свои задачи, садятся вместе разруливать.</div>
+<!--<div class="term-analogy"><b>Аналогия:</b> штаб МЧС при катастрофе. Все ключевые люди в одной комнате, координируют действия.</div>-->
+<div class="term-example">Прод лежит → созыв war room → TL + 2 dev + DevOps в Zoom → 3 часа разруливаем</div>
+</div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- VIEW 9: ШАБЛОНЫ                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="view-templates">
+<div class="view-header">
+<h2>📄 Шаблоны документов</h2>
+<div class="meta">Готовые шаблоны в Google Docs · копируешь под свою задачу · заполняешь</div>
+</div>
+
+<div class="template-card tz">
+<h3>📝 Шаблон ТЗ на разработку</h3>
+<div class="desc">Полный шаблон технического задания для любой новой фичи. Заполняется заказчиком вместе с Tech Lead до старта разработки.</div>
+<div class="when"><b>Когда использовать:</b> на этапе «Написание ТЗ» в процессе «Новый функционал». Без согласованного ТЗ задача в работу не идёт.</div>
+
+<div class="template-actions">
+<a href="https://docs.google.com/document/d/1FrqiLd0NPYEMWFX6xe4GUJNU_AU_LP-1h3nUD1c_Y5g/edit" target="_blank" class="btn btn-primary">📂 Открыть в Google Docs</a>
+<a href="https://docs.google.com/document/d/1FrqiLd0NPYEMWFX6xe4GUJNU_AU_LP-1h3nUD1c_Y5g/copy" target="_blank" class="btn btn-secondary">📋 Сделать копию</a>
+</div>
+
+<div class="template-sections">
+<h4>Структура документа (12 разделов):</h4>
+<ul>
+<li>Основная информация (название, проект, приоритет, исполнитель, дедлайн)</li>
+<li>Контекст и бизнес-цель (зачем это нужно)</li>
+<li>Описание задачи и User Stories</li>
+<li>Scope — что входит и что НЕ входит</li>
+<li>Функциональные требования (Frontend, Backend, интеграции)</li>
+<li>Нефункциональные требования (производительность, безопасность)</li>
+<li>Макеты и дизайн (Figma, брендбук)</li>
+<li>Критерии приёмки (Definition of Done)</li>
+<li>Зависимости и риски</li>
+<li>Оценка и планирование (часы по ролям)</li>
+<li>Дополнительные материалы</li>
+<li>Согласования и история изменений</li>
+</ul>
+</div>
+</div>
+
+<div class="template-card akt">
+<h3>💰 Шаблон Акта приёмки работы разработчика</h3>
+<div class="desc">Документ для ежемесячной приёмки работы и расчёта оплаты разработчиков. Tech Lead проверяет, PM согласовывает, Owner утверждает.</div>
+<div class="when"><b>Когда использовать:</b> в конце каждого месяца (или по итогам этапа) для каждого разработчика отдельно. Без подписанного акта выплата не производится.</div>
+
+<div class="template-actions">
+<a href="https://docs.google.com/document/d/17m3UX_QxviMxfTxarT51FvyIYZ0FTTNKH0k76nTxatM/edit" target="_blank" class="btn btn-primary">📂 Открыть в Google Docs</a>
+<a href="https://docs.google.com/document/d/17m3UX_QxviMxfTxarT51FvyIYZ0FTTNKH0k76nTxatM/copy" target="_blank" class="btn btn-secondary">📋 Сделать копию</a>
+</div>
+
+<div class="template-sections">
+<h4>Структура документа (8 разделов):</h4>
+<ul>
+<li>Основная информация (номер, период, разработчик, ставка, приёмщики)</li>
+<li>Выполненные задачи (таблица со ссылками на PR и статусами)</li>
+<li>Проверка качества кода (review, тесты, прод, безопасность)</li>
+<li>Проверка процесса (дейли, сроки, коммуникация)</li>
+<li>Оценка и комментарии Tech Lead (что хорошо, что улучшить)</li>
+<li>Расчёт оплаты (базовая ставка × процент приёмки, бонусы, штрафы)</li>
+<li>Доработки (если приёмка с замечаниями)</li>
+<li>Решение и подписи (TL, разработчик, PM, Owner, Бухгалтерия)</li>
+</ul>
+</div>
+</div>
+
+<div class="warning" style="margin-top:24px;">
+💡 <b>Как пользоваться:</b> жми «Сделать копию» — Google Docs создаст копию шаблона на твоём диске. Переименуй её под конкретную задачу/разработчика и заполняй. Оригинал шаблона остаётся нетронутым.
+</div>
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-' + tab.dataset.tab).classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+});
+
+// Glossary search
+const search = document.getElementById('glossary-search');
+if (search) {
+  search.addEventListener('input', e => {
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('.term-card').forEach(card => {
+      const terms = (card.dataset.term || '') + ' ' + card.textContent.toLowerCase();
+      card.style.display = !q || terms.includes(q) ? '' : 'none';
+    });
+  });
+}
+</script>
+</body>
+</html>
